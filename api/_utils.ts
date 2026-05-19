@@ -1,5 +1,10 @@
 import crypto from 'crypto';
-import { query, initDb } from './_db';
+import { neon } from '@neondatabase/serverless';
+import { initDb } from './_db';
+
+export function getSql() {
+  return neon(process.env.POSTGRES_URL!);
+}
 
 export function validateTgInitData(initData: string): boolean {
   const botToken = process.env.BOT_TOKEN || '';
@@ -27,7 +32,7 @@ export function genRefCode(userId: number): string {
   return Buffer.from(`nh${userId}`).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12).toUpperCase();
 }
 
-export function calcMined(hashPower: number, lastClaimAt: Date, offlineHours: number): number {
+export function calcMined(hashPower: number, lastClaimAt: Date | string, offlineHours: number): number {
   const maxMs = offlineHours * 3600 * 1000;
   const elapsed = Math.min(Date.now() - new Date(lastClaimAt).getTime(), maxMs) / 1000;
   return parseFloat((hashPower * 0.001 * elapsed).toFixed(8));
@@ -44,15 +49,15 @@ export function getLevel(balance: number): number {
 
 export async function upsertUser(tgData: Record<string,unknown>) {
   await initDb();
+  const sql = getSql();
   const id = tgData.id as number;
   const ref = genRefCode(id);
-  await query(
-    `INSERT INTO users (id,username,first_name,referral_code)
-     VALUES ($1,$2,$3,$4)
-     ON CONFLICT (id) DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name`,
-    [id, tgData.username as string, tgData.first_name as string, ref]
-  );
-  const { rows } = await query('SELECT * FROM users WHERE id=$1', [id]);
+  await sql`
+    INSERT INTO users (id,username,first_name,referral_code)
+    VALUES (${id},${tgData.username as string},${tgData.first_name as string},${ref})
+    ON CONFLICT (id) DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name
+  `;
+  const rows = await sql`SELECT * FROM users WHERE id=${id}`;
   return rows[0];
 }
 

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@tonconnect/ui-react": "^2.4.4",
     "@twa-dev/sdk": "^7.10.0",
     "@types/pg": "^8.20.0",
