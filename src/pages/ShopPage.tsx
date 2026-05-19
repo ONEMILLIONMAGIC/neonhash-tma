@@ -46,14 +46,15 @@ export default function ShopPage({ user, setUser }: Props) {
         validUntil: Math.floor(Date.now() / 1000) + 300,
         messages: [{ address: TON_WALLET, amount: nano }],
       })
-      // Register in backend — hash power added after blockchain confirmation
-      await client.post('/api/payments/pending', {
+      // Immediately add hash power after successful TON transaction
+      const confirmRes = await client.post('/api/payments/confirm-ton', {
         package_id: pkg.id,
         wallet_address: wallet.account.address,
         amount_ton: pkg.price_ton,
         hash_power: pkg.hash_power,
       })
-      showToast(`✅ ${pkg.price_ton} TON sent! +${pkg.hash_power} H/s pending confirmation`)
+      setUser({ ...user, hash_power: confirmRes.data.hash_power })
+      showToast(`✅ +${pkg.hash_power} H/s added! Mining rate increased!`)
     } catch (e: any) {
       const msg = String(e?.message || '')
       if (!msg.includes('reject') && !msg.includes('cancel') && !msg.includes('declined')) {

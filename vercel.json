@@ -9,6 +9,7 @@
     { "source": "/api/tasks/complete/:id",      "destination": "/api/tasks/complete?id=:id" },
     { "source": "/api/payments/pending",        "destination": "/api/payments/pending" },
     { "source": "/api/payments/stars-invoice",  "destination": "/api/payments/stars-invoice" },
-    { "source": "/api/payments/stars-confirm",  "destination": "/api/payments/stars-confirm" }
+    { "source": "/api/payments/stars-confirm",  "destination": "/api/payments/stars-confirm" },
+    { "source": "/api/payments/confirm-ton",    "destination": "/api/payments/confirm-ton" }
   ]
 }
