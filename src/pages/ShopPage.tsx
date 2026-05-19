@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react'
 import client from '../api/client'
 import type { User } from '../hooks/useUser'
+import { PACKAGES } from '../hooks/useTon'
 
 interface Upgrade {
   id: number
@@ -20,17 +22,7 @@ interface Props {
   setUser: (u: User) => void
 }
 
-const FALLBACK_UPGRADES: Upgrade[] = [
-  { id: 1,  name: 'Basic GPU',        description: 'Entry-level graphics card for mining.',          hash_power_bonus: 10,  price: 500,   category: 'mining',   level_required: 1, owned: false, icon: '🖥' },
-  { id: 2,  name: 'Pro GPU',           description: 'High-performance GPU with enhanced hash rate.',  hash_power_bonus: 25,  price: 1500,  category: 'mining',   level_required: 3, owned: false, icon: '💻' },
-  { id: 3,  name: 'ASIC Miner',        description: 'Dedicated mining hardware for max efficiency.',  hash_power_bonus: 75,  price: 5000,  category: 'mining',   level_required: 5, owned: false, icon: '⚙️' },
-  { id: 4,  name: 'Quantum Rig',       description: 'Quantum-enhanced mining at the bleeding edge.',  hash_power_bonus: 200, price: 20000, category: 'mining',   level_required: 9, owned: false, icon: '🔬' },
-  { id: 5,  name: 'Energy Cell',       description: 'Boost your max energy capacity by 500.',         hash_power_bonus: 0,   price: 800,   category: 'energy',   level_required: 2, owned: false, icon: '🔋' },
-  { id: 6,  name: 'Turbo Capacitor',   description: 'Energy regenerates 2x faster.',                  hash_power_bonus: 5,   price: 2000,  category: 'energy',   level_required: 4, owned: false, icon: '⚡' },
-  { id: 7,  name: 'Offline Booster',   description: 'Extend offline mining limit to 24 hours.',       hash_power_bonus: 0,   price: 3000,  category: 'offline',  level_required: 3, owned: false, icon: '🌙' },
-  { id: 8,  name: 'Liquid Cooling',    description: 'Keep temps low, push hash power higher.',        hash_power_bonus: 20,  price: 1200,  category: 'mining',   level_required: 2, owned: false, icon: '❄️' },
-  { id: 9,  name: 'AI Optimizer',      description: 'Neural net tunes your mining ops 24/7.',         hash_power_bonus: 40,  price: 4000,  category: 'mining',   level_required: 6, owned: false, icon: '🤖' },
-]
+const PROJECT_WALLET = import.meta.env.VITE_TON_WALLET || 'UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ'
 
 const CATEGORY_COLORS: Record<string, string> = {
   mining: '#00f5ff',
@@ -38,205 +30,229 @@ const CATEGORY_COLORS: Record<string, string> = {
   offline: '#7c3aed',
 }
 
-type Filter = 'all' | 'mining' | 'energy' | 'offline'
-const FILTERS: Filter[] = ['all', 'mining', 'energy', 'offline']
+type Tab = 'ton' | 'neon'
 
 export default function ShopPage({ user, setUser }: Props) {
-  const [upgrades, setUpgrades] = useState<Upgrade[]>(FALLBACK_UPGRADES)
-  const [filter, setFilter] = useState<Filter>('all')
-  const [buying, setBuying] = useState<number | null>(null)
+  const [tab, setTab] = useState<Tab>('ton')
+  const [upgrades, setUpgrades] = useState<Upgrade[]>([])
+  const [buying, setBuying] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const wallet = useTonWallet()
+  const [ui] = useTonConnectUI()
 
   useEffect(() => {
     client.get('/api/upgrades')
       .then(r => setUpgrades(r.data.upgrades))
-      .catch(() => { /* keep fallback */ })
+      .catch(() => {})
   }, [])
 
-  const buy = async (upgrade: Upgrade) => {
-    if (buying !== null) return
-    setBuying(upgrade.id)
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500) }
+
+  const buyTonPackage = async (pkg: typeof PACKAGES[number]) => {
+    if (!wallet) { ui.openModal(); return }
+    setBuying(pkg.id)
     try {
-      await client.post(`/api/upgrades/buy/${upgrade.id}`)
-      setUpgrades(prev => prev.map(u => u.id === upgrade.id ? { ...u, owned: true } : u))
-      setUser({
-        ...user,
-        hash_power: user.hash_power + upgrade.hash_power_bonus,
-        balance: user.balance - upgrade.price,
-        upgrades_owned: user.upgrades_owned + 1,
+      const nanotons = BigInt(Math.round(pkg.price_ton * 1_000_000_000))
+      const comment = `neonhash:buy:${pkg.id}:${user.id}`
+
+      await ui.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [{
+          address: PROJECT_WALLET,
+          amount: nanotons.toString(),
+          payload: btoa(unescape(encodeURIComponent(`\x00\x00\x00\x00${comment}`))),
+        }],
       })
-      showToast(`${upgrade.name} installed! +${upgrade.hash_power_bonus} H/s`)
-    } catch {
-      // Optimistic local update for dev
-      setUpgrades(prev => prev.map(u => u.id === upgrade.id ? { ...u, owned: true } : u))
-      setUser({
-        ...user,
-        hash_power: user.hash_power + upgrade.hash_power_bonus,
-        balance: user.balance - upgrade.price,
-        upgrades_owned: user.upgrades_owned + 1,
+
+      await client.post('/api/payments/pending', {
+        package_id: pkg.id,
+        wallet_address: wallet.account.address,
+        amount_ton: pkg.price_ton,
+        hash_power: pkg.hash_power,
       })
-      showToast(`${upgrade.name} installed!`)
+
+      showToast(`✅ Payment sent! +${pkg.hash_power} H/s will be added after confirmation`)
+    } catch (e: any) {
+      if (!e?.message?.includes('rejects') && !e?.message?.includes('cancel')) {
+        showToast('Transaction failed, try again')
+      }
     } finally {
       setBuying(null)
     }
   }
 
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
+  const buyNeonUpgrade = async (upg: Upgrade) => {
+    if (buying) return
+    setBuying(String(upg.id))
+    try {
+      await client.post(`/api/upgrades/buy/${upg.id}`)
+      setUpgrades(prev => prev.map(u => u.id === upg.id ? { ...u, owned: true } : u))
+      setUser({ ...user, hash_power: user.hash_power + upg.hash_power_bonus, balance: user.balance - upg.price })
+      showToast(`${upg.name} installed! +${upg.hash_power_bonus} H/s`)
+    } catch (e: any) {
+      showToast(e.response?.data?.error || 'Purchase failed')
+    } finally {
+      setBuying(null)
+    }
   }
-
-  const visible = filter === 'all' ? upgrades : upgrades.filter(u => u.category === filter)
 
   return (
     <div className="px-4 pt-6 pb-32">
-      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            key="shop-toast"
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="fixed top-4 left-1/2 z-50 glass rounded-full px-6 py-3 neon-text text-sm font-semibold"
-            style={{
-              transform: 'translateX(-50%)',
-              border: '1px solid #00f5ff66',
-              boxShadow: '0 0 30px #00f5ff44',
-              whiteSpace: 'nowrap',
-            }}
+            key="toast"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 z-50 glass rounded-2xl px-5 py-3 text-sm font-semibold"
+            style={{ transform: 'translateX(-50%)', border: '1px solid #00f5ff44', color: '#00f5ff', maxWidth: 320, textAlign: 'center' }}
           >
             {toast}
           </motion.div>
         )}
       </AnimatePresence>
 
-      <h1 className="gradient-text text-2xl font-bold mb-1">Upgrade Shop</h1>
-      <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-        Balance:{' '}
-        <span className="neon-text font-semibold">{user.balance.toFixed(2)} NEON</span>
-        {'  ·  '}
-        <span style={{ color: 'rgba(255,255,255,0.3)' }}>Hash: {user.hash_power} H/s</span>
-      </p>
+      <h1 className="gradient-text text-2xl font-bold mb-1">Shop</h1>
 
-      {/* Category filter tabs */}
-      <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide pb-0.5">
-        {FILTERS.map(f => (
+      {/* Wallet status */}
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          Balance: <span className="neon-text font-semibold">{user.balance.toFixed(2)} NEON</span>
+        </span>
+        {wallet ? (
+          <div className="flex items-center gap-2 glass rounded-full px-3 py-1.5" style={{ border: '1px solid #00ff8844' }}>
+            <div className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: '0 0 6px #00ff88' }} />
+            <span className="text-xs font-semibold" style={{ color: '#00ff88' }}>
+              {wallet.account.address.slice(0, 6)}…{wallet.account.address.slice(-4)}
+            </span>
+          </div>
+        ) : (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all duration-200"
-            style={
-              filter === f
-                ? { background: 'linear-gradient(135deg, #00f5ff, #7c3aed)', color: 'white', boxShadow: '0 0 15px #00f5ff44' }
-                : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)' }
+            onClick={() => ui.openModal()}
+            className="glass rounded-full px-3 py-1.5 text-xs font-semibold neon-text"
+            style={{ border: '1px solid #00f5ff44' }}
+          >
+            Connect Wallet
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-5">
+        {(['ton', 'neon'] as Tab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={tab === t
+              ? { background: 'linear-gradient(135deg,#00f5ff,#7c3aed)', color: 'white', boxShadow: '0 0 20px #00f5ff44' }
+              : { background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)' }
             }
           >
-            {f}
+            {t === 'ton' ? '💎 Buy with TON' : '⚡ Buy with NEON'}
           </button>
         ))}
       </div>
 
-      <div className="flex flex-col gap-3">
-        {visible.map((upg, i) => {
-          const color = CATEGORY_COLORS[upg.category] ?? '#00f5ff'
-          const canAfford = user.balance >= upg.price
-          const levelOk = user.level >= upg.level_required
-          const locked = !canAfford || !levelOk
-
-          return (
+      {/* TON Packages */}
+      {tab === 'ton' && (
+        <div className="flex flex-col gap-3">
+          {!wallet && (
             <motion.div
-              key={upg.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="glass rounded-2xl p-4 text-center mb-2"
+              style={{ border: '1px solid #00f5ff22' }}
+            >
+              <p className="text-sm mb-3" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                Connect your TON wallet to buy hash power packages
+              </p>
+              <button onClick={() => ui.openModal()} className="claim-btn px-6 py-2.5 rounded-xl text-sm font-bold text-white">
+                Connect Tonkeeper / Wallet
+              </button>
+            </motion.div>
+          )}
+
+          {PACKAGES.map((pkg, i) => (
+            <motion.div
+              key={pkg.id}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
+              transition={{ delay: i * 0.05 }}
               className="glass rounded-2xl p-4"
-              style={{
-                border: upg.owned
-                  ? '1px solid rgba(0,255,136,0.35)'
-                  : `1px solid ${color}22`,
-                boxShadow: upg.owned ? '0 0 20px rgba(0,255,136,0.1)' : 'none',
-              }}
+              style={{ border: '1px solid rgba(0,245,255,0.15)', boxShadow: '0 0 20px rgba(0,245,255,0.04)' }}
             >
-              <div className="flex items-start gap-3">
-                {/* Icon */}
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: upg.owned ? 'rgba(0,255,136,0.15)' : `${color}15`,
-                    border: `1px solid ${upg.owned ? 'rgba(0,255,136,0.3)' : `${color}30`}`,
-                    fontSize: 22,
-                  }}
-                >
-                  {upg.owned ? '✓' : upg.icon}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-white">{upg.name}</span>
-                    {upg.level_required > 1 && (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-full"
-                        style={{ background: `${color}22`, color }}
-                      >
-                        Lv.{upg.level_required}+
-                      </span>
-                    )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span style={{ fontSize: 28 }}>{pkg.label}</span>
+                  <div>
+                    <div className="font-bold text-white">{pkg.name}</div>
+                    <div className="text-xs mt-0.5 neon-text">+{pkg.hash_power.toLocaleString()} H/s</div>
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{upg.description}</p>
-                  {upg.hash_power_bonus > 0 && (
-                    <p className="text-xs mt-1 font-semibold" style={{ color }}>
-                      +{upg.hash_power_bonus} H/s hash power
-                    </p>
-                  )}
                 </div>
+                <button
+                  onClick={() => buyTonPackage(pkg)}
+                  disabled={buying === pkg.id}
+                  className="claim-btn rounded-xl px-4 py-2.5 font-bold text-white text-sm flex-shrink-0"
+                  style={{ minWidth: 90 }}
+                >
+                  {buying === pkg.id ? '⏳' : `${pkg.price_ton} TON`}
+                </button>
               </div>
 
-              {/* Price + Buy row */}
-              <div className="flex items-center justify-between mt-3 pt-3"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <span className="text-sm font-bold text-white">
-                  {upg.price.toLocaleString()}
-                  <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.35)' }}>NEON</span>
-                </span>
-
-                {upg.owned ? (
-                  <span
-                    className="text-xs px-3 py-1.5 rounded-xl font-semibold"
-                    style={{ background: 'rgba(0,255,136,0.15)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.3)' }}
-                  >
-                    ✓ Installed
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => !locked && buy(upg)}
-                    disabled={locked || buying === upg.id}
-                    className="text-xs px-4 py-2 rounded-xl font-semibold transition-all duration-200"
-                    style={
-                      !locked
-                        ? {
-                            background: `linear-gradient(135deg, ${color}, #7c3aed)`,
-                            color: 'white',
-                            boxShadow: `0 0 15px ${color}44`,
-                          }
-                        : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }
-                    }
-                  >
-                    {buying === upg.id
-                      ? '...'
-                      : !levelOk
-                      ? `Lv.${upg.level_required} required`
-                      : !canAfford
-                      ? 'Insufficient'
-                      : 'Buy'}
-                  </button>
-                )}
+              {/* Rate */}
+              <div className="mt-3 flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <span>Rate: +{(pkg.hash_power * 0.001).toFixed(1)} NEON/s</span>
+                <span>≈ {(pkg.hash_power * 0.001 * 3600 * 24).toFixed(0)} NEON/day</span>
               </div>
             </motion.div>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {/* NEON Upgrades */}
+      {tab === 'neon' && (
+        <div className="flex flex-col gap-3">
+          {upgrades.map((upg, i) => {
+            const color = CATEGORY_COLORS[upg.category] ?? '#00f5ff'
+            const canAfford = user.balance >= upg.price
+            return (
+              <motion.div
+                key={upg.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="glass rounded-2xl p-4 flex items-center gap-3"
+                style={{ border: upg.owned ? '1px solid rgba(0,255,136,0.3)' : `1px solid ${color}18` }}
+              >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                  style={{ background: upg.owned ? 'rgba(0,255,136,0.15)' : `${color}15`, border: `1px solid ${upg.owned ? 'rgba(0,255,136,0.3)' : `${color}25`}` }}>
+                  {upg.owned ? '✓' : upg.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-white">{upg.name}</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{upg.description}</div>
+                  {upg.hash_power_bonus > 0 && <div className="text-xs mt-1" style={{ color }}> +{upg.hash_power_bonus} H/s</div>}
+                </div>
+                <button
+                  onClick={() => buyNeonUpgrade(upg)}
+                  disabled={upg.owned || !canAfford || buying === String(upg.id)}
+                  className="flex-shrink-0 rounded-xl px-3 py-2 text-xs font-semibold"
+                  style={{
+                    background: upg.owned ? 'rgba(0,255,136,0.15)' : canAfford ? `${color}15` : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${upg.owned ? 'rgba(0,255,136,0.3)' : canAfford ? `${color}44` : 'rgba(255,255,255,0.1)'}`,
+                    color: upg.owned ? '#00ff88' : canAfford ? color : 'rgba(255,255,255,0.3)',
+                    minWidth: 72,
+                  }}
+                >
+                  {buying === String(upg.id) ? '...' : upg.owned ? 'Owned' : `${upg.price} N`}
+                </button>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { TonConnectUIProvider } from '@tonconnect/ui-react'
 import MinePage from './pages/MinePage'
 import ShopPage from './pages/ShopPage'
 import TasksPage from './pages/TasksPage'
@@ -33,6 +34,7 @@ export default function App() {
   }
 
   return (
+    <TonConnectUIProvider manifestUrl="https://frontend-delta-beige-zwv9guyu2s.vercel.app/tonconnect-manifest.json">
     <div
       className="min-h-screen flex flex-col max-w-[430px] mx-auto relative overflow-hidden"
       style={{ background: '#050510' }}
@@ -82,6 +84,7 @@ export default function App() {
 
       <BottomNav current={currentPage} onChange={setCurrentPage} />
     </div>
+    </TonConnectUIProvider>
   )
 }
 

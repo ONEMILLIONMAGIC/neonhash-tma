@@ -23,3 +23,11 @@
 {"type":"edit","file":"/Users/utente/neonhash/frontend/Dockerfile","timestamp":1779217301462,"sessionId":null}
 {"type":"edit","file":"/Users/utente/neonhash/frontend/nginx.conf","timestamp":1779217302961,"sessionId":null}
 {"type":"edit","file":"/Users/utente/neonhash/frontend/src/vite-env.d.ts","timestamp":1779217389649,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/public/tonconnect-manifest.json","timestamp":1779218580856,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/src/hooks/useTon.ts","timestamp":1779218592602,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/src/pages/ShopPage.tsx","timestamp":1779218635939,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/src/App.tsx","timestamp":1779218647244,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/src/App.tsx","timestamp":1779218652746,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/src/App.tsx","timestamp":1779218663335,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/backend/src/routes/payments.ts","timestamp":1779218672451,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/backend/src/services/tonVerifier.ts","timestamp":1779218694351,"sessionId":null}
