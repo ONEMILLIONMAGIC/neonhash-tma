@@ -31,3 +31,14 @@
 {"type":"edit","file":"/Users/utente/neonhash/frontend/src/App.tsx","timestamp":1779218663335,"sessionId":null}
 {"type":"edit","file":"/Users/utente/neonhash/backend/src/routes/payments.ts","timestamp":1779218672451,"sessionId":null}
 {"type":"edit","file":"/Users/utente/neonhash/backend/src/services/tonVerifier.ts","timestamp":1779218694351,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/_db.ts","timestamp":1779219293656,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/_utils.ts","timestamp":1779219304252,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/auth.ts","timestamp":1779219316191,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/mining/status.ts","timestamp":1779219319205,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/mining/claim.ts","timestamp":1779219324232,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/upgrades/index.ts","timestamp":1779219329513,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/upgrades/buy.ts","timestamp":1779219333098,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/tasks/index.ts","timestamp":1779219336197,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/tasks/complete.ts","timestamp":1779219340461,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/api/payments/pending.ts","timestamp":1779219344240,"sessionId":null}
+{"type":"edit","file":"/Users/utente/neonhash/frontend/vercel.json","timestamp":1779219365742,"sessionId":null}

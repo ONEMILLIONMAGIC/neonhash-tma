@@ -11,6 +11,8 @@
   "dependencies": {
     "@tonconnect/ui-react": "^2.4.4",
     "@twa-dev/sdk": "^7.10.0",
+    "@vercel/node": "^5.8.3",
+    "@vercel/postgres": "^0.10.0",
     "axios": "^1.7.2",
     "framer-motion": "^11.2.10",
     "lucide-react": "^0.395.0",
