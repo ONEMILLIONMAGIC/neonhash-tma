@@ -40,17 +40,25 @@ export default function ShopPage({ user, setUser }: Props) {
     if (!wallet) { ui.openModal(); return }
     setBuying(pkg.id)
     try {
-      const nano = BigInt(Math.round(pkg.price_ton * 1_000_000_000))
-      const comment = `neonhash:${pkg.id}:${user.id}`
+      const nano = Math.round(pkg.price_ton * 1_000_000_000).toString()
+      // Simple transfer — no payload to avoid encoding issues
       await ui.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [{ address: TON_WALLET, amount: nano.toString(),
-          payload: btoa(unescape(encodeURIComponent(`\x00\x00\x00\x00${comment}`))) }],
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{ address: TON_WALLET, amount: nano }],
       })
-      await client.post('/api/payments/pending', { package_id: pkg.id, wallet_address: wallet.account.address, amount_ton: pkg.price_ton, hash_power: pkg.hash_power })
-      showToast(`✅ ${pkg.price_ton} TON sent! +${pkg.hash_power} H/s will be added after confirmation`)
+      // Register in backend — hash power added after blockchain confirmation
+      await client.post('/api/payments/pending', {
+        package_id: pkg.id,
+        wallet_address: wallet.account.address,
+        amount_ton: pkg.price_ton,
+        hash_power: pkg.hash_power,
+      })
+      showToast(`✅ ${pkg.price_ton} TON sent! +${pkg.hash_power} H/s pending confirmation`)
     } catch (e: any) {
-      if (!String(e?.message).includes('reject') && !String(e?.message).includes('cancel')) showToast('Transaction failed', false)
+      const msg = String(e?.message || '')
+      if (!msg.includes('reject') && !msg.includes('cancel') && !msg.includes('declined')) {
+        showToast(`Error: ${msg.slice(0, 60) || 'Transaction failed'}`, false)
+      }
     } finally { setBuying(null) }
   }
 
