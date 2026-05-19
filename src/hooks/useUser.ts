@@ -41,7 +41,9 @@ export function useUser() {
   const fetchUser = async () => {
     setLoading(true)
     try {
-      const res = await client.post('/api/auth')
+      const tgWebApp = window.Telegram?.WebApp as any
+      const startParam = tgWebApp?.initDataUnsafe?.start_param || null
+      const res = await client.post('/api/auth', { start_param: startParam })
       const apiUser = res.data.user as User
       // Merge TG avatar from WebApp (API doesn't return photo_url)
       const tgData = getTgUser()
