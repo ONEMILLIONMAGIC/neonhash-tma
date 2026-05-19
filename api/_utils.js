@@ -1,7 +1,9 @@
-const crypto = require('crypto');
-const { getSql, initDb } = require('./_db');
+import crypto from 'crypto';
+import { getSql, initDb } from './_db.js';
 
-function validateTgInitData(initData) {
+export { getSql };
+
+export function validateTgInitData(initData) {
   const botToken = process.env.BOT_TOKEN || '';
   if (!botToken || initData === 'dev_mode') return true;
   try {
@@ -15,7 +17,7 @@ function validateTgInitData(initData) {
   } catch { return false; }
 }
 
-function parseTgUser(initData) {
+export function parseTgUser(initData) {
   if (initData === 'dev_mode') return { id: 1, username: 'dev', first_name: 'Dev' };
   try {
     const u = new URLSearchParams(initData).get('user');
@@ -23,17 +25,17 @@ function parseTgUser(initData) {
   } catch { return null; }
 }
 
-function genRefCode(userId) {
+export function genRefCode(userId) {
   return Buffer.from(`nh${userId}`).toString('base64').replace(/[^a-zA-Z0-9]/g,'').slice(0,12).toUpperCase();
 }
 
-function calcMined(hashPower, lastClaimAt, offlineHours) {
+export function calcMined(hashPower, lastClaimAt, offlineHours) {
   const maxMs = offlineHours * 3600 * 1000;
   const elapsed = Math.min(Date.now() - new Date(lastClaimAt).getTime(), maxMs) / 1000;
   return parseFloat((hashPower * 0.001 * elapsed).toFixed(8));
 }
 
-function getLevel(balance) {
+export function getLevel(balance) {
   if (balance < 1000) return 1;
   if (balance < 5000) return 2;
   if (balance < 15000) return 3;
@@ -42,21 +44,18 @@ function getLevel(balance) {
   return Math.min(10, Math.floor(balance / 100000) + 5);
 }
 
-async function upsertUser(tgData) {
+export async function upsertUser(tgData) {
   await initDb();
   const sql = getSql();
   const id = tgData.id;
   const ref = genRefCode(id);
-  await sql`INSERT INTO users (id,username,first_name,referral_code) VALUES (${id},${tgData.username},${tgData.first_name},${ref})
-    ON CONFLICT (id) DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name`;
+  await sql`INSERT INTO users (id,username,first_name,referral_code) VALUES (${id},${tgData.username},${tgData.first_name},${ref}) ON CONFLICT (id) DO UPDATE SET username=EXCLUDED.username, first_name=EXCLUDED.first_name`;
   const rows = await sql`SELECT * FROM users WHERE id=${id}`;
   return rows[0];
 }
 
-function setCors(res) {
+export function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');
 }
-
-module.exports = { validateTgInitData, parseTgUser, calcMined, getLevel, upsertUser, setCors, getSql };

@@ -1,6 +1,6 @@
-const { validateTgInitData, parseTgUser, upsertUser, calcMined, getLevel, setCors } = require('./_utils');
+import { validateTgInitData, parseTgUser, upsertUser, calcMined, getLevel, setCors } from './_utils.js';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
@@ -18,4 +18,4 @@ module.exports = async function handler(req, res) {
     pending_coins: mined, offline_limit_hours: user.offline_limit_hours,
     total_mined: parseFloat(user.total_mined), upgrades_owned: user.upgrades_owned, referrals_count: 0,
   }});
-};
+}
