@@ -23,8 +23,11 @@ declare global {
   }
 }
 
+// On Vercel: API lives at /api/* (same origin). Locally: proxy via vite or localhost:3001
+const BASE = import.meta.env.VITE_API_URL ?? ''
+
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+  baseURL: BASE,
 })
 
 client.interceptors.request.use((config) => {

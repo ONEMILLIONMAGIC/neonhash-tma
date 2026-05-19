@@ -1,12 +1,14 @@
 {
   "rewrites": [
-    { "source": "/api/mining/status", "destination": "/api/mining/status" },
-    { "source": "/api/mining/claim",  "destination": "/api/mining/claim" },
-    { "source": "/api/upgrades/buy/:id", "destination": "/api/upgrades/buy?id=:id" },
-    { "source": "/api/upgrades",      "destination": "/api/upgrades/index" },
-    { "source": "/api/tasks/complete/:id", "destination": "/api/tasks/complete?id=:id" },
-    { "source": "/api/tasks",         "destination": "/api/tasks/index" },
-    { "source": "/api/payments/pending", "destination": "/api/payments/pending" },
-    { "source": "/api/auth",          "destination": "/api/auth" }
+    { "source": "/api/auth",                    "destination": "/api/auth" },
+    { "source": "/api/mining/status",           "destination": "/api/mining/status" },
+    { "source": "/api/mining/claim",            "destination": "/api/mining/claim" },
+    { "source": "/api/upgrades",                "destination": "/api/upgrades/index" },
+    { "source": "/api/upgrades/buy/:id",        "destination": "/api/upgrades/buy?id=:id" },
+    { "source": "/api/tasks",                   "destination": "/api/tasks/index" },
+    { "source": "/api/tasks/complete/:id",      "destination": "/api/tasks/complete?id=:id" },
+    { "source": "/api/payments/pending",        "destination": "/api/payments/pending" },
+    { "source": "/api/payments/stars-invoice",  "destination": "/api/payments/stars-invoice" },
+    { "source": "/api/payments/stars-confirm",  "destination": "/api/payments/stars-confirm" }
   ]
 }
